@@ -1,5 +1,4 @@
 package testsmell.smell;
-
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.expr.MethodCallExpr;
@@ -7,114 +6,111 @@ import com.github.javaparser.ast.visitor.VoidVisitorAdapter;
 import testsmell.AbstractSmell;
 import testsmell.Util;
 import thresholds.Thresholds;
-
 import java.io.FileNotFoundException;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 public class DependentTest extends AbstractSmell {
 
-    private List<TestMethod> testMethods;
+    private final Map<String, TestMethod> testMethods; //mappa nome del test con TestMethod che contiene tutto l'utile
+
 
     public DependentTest(Thresholds thresholds) {
         super(thresholds);
-        testMethods = new ArrayList<>();
+        testMethods = new HashMap<>();
     }
 
-    /**
-     * Checks of 'DependentTest' smell
-     */
+
     @Override
     public String getSmellName() {
         return "Dependent Test";
     }
 
-    /**
-     * Analyze the test file for test methods that call other test methods
-     */
+
     @Override
     public void runAnalysis(CompilationUnit testFileCompilationUnit, CompilationUnit productionFileCompilationUnit, String testFileName, String productionFileName) throws FileNotFoundException {
         DependentTest.ClassVisitor classVisitor;
         classVisitor = new DependentTest.ClassVisitor();
         classVisitor.visit(testFileCompilationUnit, null);
-
-        for (TestMethod testMethod : testMethods) {
-            if (testMethod.getCalledMethods().stream().anyMatch(x -> x.getName().equals(testMethods.stream().map(z -> z.getMethodDeclaration().getNameAsString())))) {
-                smellyElementsSet.add(new testsmell.TestMethod(testMethod.getMethodDeclaration().getNameAsString()));
+        for (TestMethod tm : testMethods.values()) {
+            for (CalledMethod cm : tm.getCalled()) {
+                TestMethod target = testMethods.get(cm.getName());
+                if (target != null) {
+                    int args = target.getArgs();
+                    if(args == cm.getArgs()){
+                        smellyElementsSet.add(
+                                new testsmell.TestMethod(tm.getName(), true)
+                        );
+                        System.out.println("Dependent Test detected: " + tm.getName());
+                    }
+                }
             }
         }
 
-/*
-        for (int i = 0; i < testMethods.get(i).getCalledMethods().size(); i++) {
-            for (TestMethod testMethod : testMethods) {
-                if (testMethods.get(i).getCalledMethods().stream().anyMatch(x -> x.getName().equals(testMethod.getMethodDeclaration().getNameAsString()))) {
-                    smellyElementList.add(new testsmell.TestMethod(testMethod.getMethodDeclaration().getNameAsString()));
-                }
-            }
-        }*/
     }
 
     private class ClassVisitor extends VoidVisitorAdapter<Void> {
-        private MethodDeclaration currentMethod = null;
-        List<CalledMethod> calledMethods;
+        private String currentMethod = null;
+        private int argsOfTheCurrentMethod = 0;
 
         // examine all methods in the test class
         @Override
-        public void visit(MethodDeclaration n, Void arg) {
-            if (Util.isValidTestMethod(n)) {
-                currentMethod = n;
-                calledMethods = new ArrayList<>();
-
-                super.visit(n, arg);
-                testMethods.add(new DependentTest.TestMethod(n, calledMethods));
+        public void visit(MethodDeclaration md, Void arg) {
+            if (Util.isValidTestMethod(md)) {
+                currentMethod = md.getNameAsString();
+                argsOfTheCurrentMethod = md.getParameters().size();
+                testMethods.put(currentMethod, new TestMethod(currentMethod,argsOfTheCurrentMethod));
+                super.visit(md, arg);
             }
         }
 
-        // examine the methods being called within the test method
         @Override
-        public void visit(MethodCallExpr n, Void arg) {
-            super.visit(n, arg);
+        public void visit(MethodCallExpr mc, Void arg) {
+            super.visit(mc, arg);
             if (currentMethod != null) {
-                if (!calledMethods.contains(new CalledMethod(n.getArguments().size(), n.getNameAsString()))) {
-                    calledMethods.add(new CalledMethod(n.getArguments().size(), n.getNameAsString()));
-                }
+                testMethods.get(currentMethod)
+                        .addCalled(new CalledMethod(mc.getNameAsString(), mc.getArguments().size()));
             }
         }
     }
 
     private class TestMethod {
-        public List<CalledMethod> getCalledMethods() {
-            return calledMethods;
+        private String name = null; // nome del metodo in esame ad es. @Test
+        private int args = 0;
+        private Set<CalledMethod> called = new HashSet<>(); // set di metodi che richiama
+
+        public TestMethod(String currentMethod,int args) {
+            this.name = currentMethod;
+            this.args = args;
         }
 
-        public MethodDeclaration getMethodDeclaration() {
-            return methodDeclaration;
+        public int getArgs() {
+            return args;
         }
 
-        public TestMethod(MethodDeclaration methodDeclaration, List<CalledMethod> calledMethods) {
-            this.methodDeclaration = methodDeclaration;
-            this.calledMethods = calledMethods;
-        }
+        void addCalled(CalledMethod cm) { called.add(cm); }
+        Set<CalledMethod> getCalled() { return called; }
 
-        private List<CalledMethod> calledMethods;
-        private MethodDeclaration methodDeclaration;
+        public String getName() {
+            return name;
+        }
     }
 
     private class CalledMethod {
-        public int getTotalArguments() {
-            return totalArguments;
+        private String name = null;
+        private int args = 0;
+
+        public CalledMethod(String nameAsString, int size) {
+            this.name = nameAsString;
+            this.args=size;
+        }
+
+
+        public int getArgs() {
+            return args;
         }
 
         public String getName() {
             return name;
         }
-
-        public CalledMethod(int totalArguments, String name) {
-            this.totalArguments = totalArguments;
-            this.name = name;
-        }
-
-        private int totalArguments;
-        private String name;
     }
 }

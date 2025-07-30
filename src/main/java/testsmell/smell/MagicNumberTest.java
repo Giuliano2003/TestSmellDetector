@@ -10,8 +10,11 @@ import testsmell.AbstractSmell;
 import testsmell.TestMethod;
 import testsmell.Util;
 import thresholds.Thresholds;
+import com.github.javaparser.ast.expr.BinaryExpr;
+import com.github.javaparser.ast.expr.LiteralExpr;
 
 import java.io.FileNotFoundException;
+import java.util.Arrays;
 
 public class MagicNumberTest extends AbstractSmell {
 
@@ -55,53 +58,58 @@ public class MagicNumberTest extends AbstractSmell {
                 testMethod.setSmell(magicCount >= thresholds.getMagicNumberTest());
                 testMethod.addDataItem("MagicNumberCount", String.valueOf(magicCount));
                 smellyElementsSet.add(testMethod);
-
+                System.out.println("Test analizzato:");
+                System.out.println(n.getNameAsString());
+                System.out.println(testMethod.isSmelly());
                 //reset values for next method
                 currentMethod = null;
                 magicCount = 0;
             }
         }
 
-        // examine the methods being called within the test method
         @Override
         public void visit(MethodCallExpr n, Void arg) {
             super.visit(n, arg);
-            if (currentMethod != null) {
-                // if the name of a method being called start with 'assert'
-                if (n.getNameAsString().startsWith(("assertArrayEquals")) ||
-                        n.getNameAsString().startsWith(("assertEquals")) ||
-                        n.getNameAsString().startsWith(("assertNotSame")) ||
-                        n.getNameAsString().startsWith(("assertSame")) ||
-                        n.getNameAsString().startsWith(("assertThat")) ||
-                        n.getNameAsString().equals("assertNotNull") ||
-                        n.getNameAsString().equals("assertNull")) {
-                    // checks all arguments of the assert method
-                    for (Expression argument : n.getArguments()) {
-                        // if the argument is a number
-                        if (Util.isNumber(argument.toString())) {
-                            magicCount++;
-                        }
-                        // if the argument contains an ObjectCreationExpr (e.g. assertEquals(new Integer(2),...)
-                        else if (argument instanceof ObjectCreationExpr) {
-                            for (Expression objectArguments : ((ObjectCreationExpr) argument).getArguments()) {
-                                if (Util.isNumber(objectArguments.toString())) {
-                                    magicCount++;
-                                }
-                            }
-                        }
-                        // if the argument contains an MethodCallExpr (e.g. assertEquals(someMethod(2),...)
-                        else if (argument instanceof MethodCallExpr) {
-                            for (Expression objectArguments : ((MethodCallExpr) argument).getArguments()) {
-                                if (Util.isNumber(objectArguments.toString())) {
-                                    magicCount++;
-                                }
-                            }
-                        }
-                    }
+            if (currentMethod != null && isAssertMethod(n.getNameAsString())) {
+                for (Expression argument : n.getArguments()) {
+                    countMagicNumbers(argument);
                 }
             }
         }
 
-    }
+        private boolean isAssertMethod(String name) {
+            return name.startsWith("assertArrayEquals") ||
+                    name.startsWith("assertEquals") ||
+                    name.startsWith("assertNotSame") ||
+                    name.startsWith("assertSame") ||
+                    name.startsWith("assertThat") ||
+                    name.equals("assertNotNull") ||
+                    name.equals("assertNull") ||
+                    name.equals("assertTrue") ||
+                    name.equals("assertFalse");
+        }
 
+        private void countMagicNumbers(Expression expr) {
+            if (expr instanceof LiteralExpr) {
+                if (Util.isNumber(expr.toString())) {
+                    magicCount++;
+                }
+            }
+            else if (expr instanceof BinaryExpr) {
+                BinaryExpr bin = (BinaryExpr) expr;
+                countMagicNumbers(bin.getLeft());
+                countMagicNumbers(bin.getRight());
+            }
+            else if (expr instanceof MethodCallExpr) { // del tipo assertEquals(someMethod(5))
+                for (Expression arg : ((MethodCallExpr) expr).getArguments()) {
+                    countMagicNumbers(arg);
+                }
+            }
+            else if (expr instanceof ObjectCreationExpr) { // del tipo assertEquals(new Integer(5))
+                for (Expression arg : ((ObjectCreationExpr) expr).getArguments()) {
+                    countMagicNumbers(arg);
+                }
+            }
+        }
+    }
 }

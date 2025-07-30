@@ -6,6 +6,7 @@ import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.expr.AnnotationExpr;
 import com.github.javaparser.ast.expr.MemberValuePair;
 import com.github.javaparser.ast.expr.MethodCallExpr;
+import com.github.javaparser.ast.expr.NormalAnnotationExpr;
 import com.github.javaparser.ast.visitor.VoidVisitorAdapter;
 import testsmell.AbstractSmell;
 import testsmell.SmellyElement;
@@ -55,14 +56,17 @@ public class UnknownTest extends AbstractSmell {
             if (Util.isValidTestMethod(n)) {
                 Optional<AnnotationExpr> assertAnnotation = n.getAnnotationByName("Test");
                 if (assertAnnotation.isPresent()) {
-                    for (int i = 0; i < assertAnnotation.get().getNodeLists().size(); i++) {
-                        NodeList<?> c = assertAnnotation.get().getNodeLists().get(i);
-                        for (int j = 0; j < c.size(); j++)
-                            if (c.get(j) instanceof MemberValuePair) {
-                                if (((MemberValuePair) c.get(j)).getName().equals("expected") && ((MemberValuePair) c.get(j)).getValue().toString().contains("Exception"))
-                                    ;
+                    AnnotationExpr annotation = assertAnnotation.get();
+                    if (annotation.isNormalAnnotationExpr()) {
+                        NormalAnnotationExpr normal = annotation.asNormalAnnotationExpr();
+
+                        for (MemberValuePair pair : normal.getPairs()) {
+                            if (pair.getNameAsString().equals("expected")
+                                    && pair.getValue().toString().contains("Exception")) {
                                 hasExceptionAnnotation = true;
+                                break;
                             }
+                        }
                     }
                 }
                 currentMethod = n;

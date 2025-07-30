@@ -9,6 +9,8 @@ import org.mockito.Mockito
 import org.mockito.Mockito.mock
 import testsmell.smell.EagerTest
 import thresholds.DefaultThresholds
+import com.github.javaparser.StaticJavaParser
+
 
 class TestAssertionsDetection {
 
@@ -19,8 +21,8 @@ class TestAssertionsDetection {
 
     @BeforeEach
     fun setup() {
-        testCompilationUnit = JavaParser.parse(simpleTest)
-        productionCompilationUnit = JavaParser.parse(simpleClass)
+        testCompilationUnit = StaticJavaParser.parse(simpleTest)
+        productionCompilationUnit = StaticJavaParser.parse(simpleClass)
         testFile = mock(TestFile::class.java)
         Mockito.`when`(testFile.testFileNameWithoutExtension).thenReturn("fake/path")
         Mockito.`when`(testFile.productionFileNameWithoutExtension).thenReturn("fake/path")

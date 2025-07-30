@@ -31,7 +31,7 @@ open class DefaultThresholds : Thresholds() {
     override val conditionalTestLogic: Int
         get() = 0
     override val magicNumberTest: Int
-        get() = 0
+        get() = 1
     override val generalFixture: Int
         get() = 0
     override val mysteryGuest: Int

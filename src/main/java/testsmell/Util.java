@@ -6,52 +6,48 @@ import com.github.javaparser.ast.body.MethodDeclaration;
 public class Util {
 
     public static boolean isValidTestMethod(MethodDeclaration n) {
-        boolean valid = false;
-
-        if (!n.getAnnotationByName("Ignore").isPresent()) {
-            //only analyze methods that either have a @test annotation (Junit 4) or the method name starts with 'test'
-            if (n.getAnnotationByName("Test").isPresent() || n.getNameAsString().toLowerCase().startsWith("test")) {
-                //must be a public method
-                if (n.getModifiers().contains(Modifier.PUBLIC)) {
-                    valid = true;
-                }
-            }
+        if (n.getAnnotationByName("Ignore").isPresent()) {
+            return false;
         }
-
-        return valid;
+        // Deve essere un test JUnit 4 (@Test) o JUnit 3 (nome inizia con "test")
+        boolean isTest = n.getAnnotationByName("Test").isPresent()
+                || n.getNameAsString().toLowerCase().startsWith("test");
+        if (!isTest) {
+            return false;
+        }
+        return n.hasModifier(Modifier.Keyword.PUBLIC);
     }
 
     public static boolean isValidSetupMethod(MethodDeclaration n) {
-        boolean valid = false;
-
-        if (!n.getAnnotationByName("Ignore").isPresent()) {
-            //only analyze methods that either have a @Before annotation (Junit 4) or the method name is 'setUp'
-            if (n.getAnnotationByName("Before").isPresent() || n.getNameAsString().equals("setUp")) {
-                //must be a public method
-                if (n.getModifiers().contains(Modifier.PUBLIC)) {
-                    valid = true;
-                }
-            }
+        // Non consideriamo metodi ignorati
+        if (n.getAnnotationByName("Ignore").isPresent()) {
+            return false;
         }
-
-        return valid;
+        // Deve essere setup JUnit 4 (@Before) o JUnit 3 (nome esatto "setUp")
+        boolean isSetup = n.getAnnotationByName("Before").isPresent()
+                || n.getNameAsString().equals("setUp");
+        if (!isSetup) {
+            return false;
+        }
+        // Deve essere pubblico
+        return n.hasModifier(Modifier.Keyword.PUBLIC);
     }
 
-    public static boolean isInt(String s)
-    {
-        try
-        { int i = Integer.parseInt(s); return true; }
-
-        catch(NumberFormatException er)
-        { return false; }
+    public static boolean isInt(String s) {
+        try {
+            Integer.parseInt(s);
+            return true;
+        } catch (NumberFormatException er) {
+            return false;
+        }
     }
 
     public static boolean isNumber(String str) {
         try {
-            double v = Double.parseDouble(str);
+            Double.parseDouble(str);
             return true;
         } catch (NumberFormatException nfe) {
+            return false;
         }
-        return false;
     }
 }

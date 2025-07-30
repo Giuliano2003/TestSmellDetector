@@ -12,6 +12,8 @@ import testsmell.smell.AssertionRoulette
 import testsmell.smell.EagerTest
 import thresholds.DefaultThresholds
 import thresholds.SpadiniThresholds
+import com.github.javaparser.StaticJavaParser
+
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class TestDetectionCorrectness {
@@ -24,8 +26,8 @@ class TestDetectionCorrectness {
 
     @BeforeEach
     fun setup() {
-        testCompilationUnit = JavaParser.parse(fractionTest)
-        productionCompilationUnit = JavaParser.parse(fractionSource)
+        testCompilationUnit = StaticJavaParser.parse(fractionTest)
+        productionCompilationUnit = StaticJavaParser.parse(fractionSource)
         testFile = mock(TestFile::class.java)
         `when`(testFile.testFileNameWithoutExtension).thenReturn("fake/path")
         `when`(testFile.productionFileNameWithoutExtension).thenReturn("fake/path")

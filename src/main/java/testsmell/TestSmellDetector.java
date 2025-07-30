@@ -1,8 +1,13 @@
 package testsmell;
 
 import com.github.javaparser.JavaParser;
+import com.github.javaparser.ParseResult;
+import com.github.javaparser.ParserConfiguration;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.body.TypeDeclaration;
+import com.github.javaparser.symbolsolver.JavaSymbolSolver;
+import com.github.javaparser.symbolsolver.resolution.typesolvers.CombinedTypeSolver;
+import com.github.javaparser.symbolsolver.resolution.typesolvers.ReflectionTypeSolver;
 import org.apache.commons.lang3.StringUtils;
 import testsmell.smell.*;
 import thresholds.Thresholds;
@@ -74,27 +79,57 @@ public class TestSmellDetector {
      */
     public TestFile detectSmells(TestFile testFile) throws IOException {
         initializeSmells();
-        CompilationUnit testFileCompilationUnit = null;
-        CompilationUnit productionFileCompilationUnit = null;
-        FileInputStream testFileInputStream, productionFileInputStream;
+
+        // 1) Prepara il CombinedTypeSolver / JavaSymbolSolver
+        CombinedTypeSolver typeSolver = new CombinedTypeSolver();
+        typeSolver.add(new ReflectionTypeSolver());
+        // se ti serve risolvere classi dal tuo codice di produzione:
+        // typeSolver.add(new JavaParserTypeSolver(new File("src/main/java")));
+
+        JavaSymbolSolver symbolSolver = new JavaSymbolSolver(typeSolver);
+
+        // 2) Crea una ParserConfiguration con il SymbolResolver
+        ParserConfiguration parserConfig = new ParserConfiguration()
+                .setSymbolResolver(symbolSolver);
+
+        // 3) Inizializza JavaParser con quella configurazione
+        JavaParser parser = new JavaParser(parserConfig);
+
+        CompilationUnit testFileCU = null;
+        CompilationUnit prodFileCU = null;
 
         if (!StringUtils.isEmpty(testFile.getTestFilePath())) {
-            testFileInputStream = new FileInputStream(testFile.getTestFilePath());
-            testFileCompilationUnit = JavaParser.parse(testFileInputStream);
-            TypeDeclaration typeDeclaration = testFileCompilationUnit.getTypes().get(0);
-            testFile.setNumberOfTestMethods(typeDeclaration.getMethods().size());
+            try (FileInputStream in = new FileInputStream(testFile.getTestFilePath())) {
+                ParseResult<CompilationUnit> result = parser.parse(in);
+                if (result.isSuccessful() && result.getResult().isPresent()) {
+                    testFileCU = result.getResult().get();
+                    TypeDeclaration<?> typeDecl = testFileCU.getTypes().get(0);
+                    testFile.setNumberOfTestMethods(typeDecl.getMethods().size());
+                } else {
+                    throw new IOException("Parsing errors: " + result.getProblems());
+                }
+            }
         }
 
         if (!StringUtils.isEmpty(testFile.getProductionFilePath())) {
-            productionFileInputStream = new FileInputStream(testFile.getProductionFilePath());
-            productionFileCompilationUnit = JavaParser.parse(productionFileInputStream);
+            try (FileInputStream in = new FileInputStream(testFile.getProductionFilePath())) {
+                ParseResult<CompilationUnit> result = parser.parse(in);
+                if (result.isSuccessful() && result.getResult().isPresent()) {
+                    prodFileCU = result.getResult().get();
+                } else {
+                    throw new IOException("Parsing errors: " + result.getProblems());
+                }
+            }
         }
 
         for (AbstractSmell smell : testSmells) {
             try {
-                smell.runAnalysis(testFileCompilationUnit, productionFileCompilationUnit,
+                smell.runAnalysis(
+                        testFileCU,
+                        prodFileCU,
                         testFile.getTestFileNameWithoutExtension(),
-                        testFile.getProductionFileNameWithoutExtension());
+                        testFile.getProductionFileNameWithoutExtension()
+                );
             } catch (FileNotFoundException e) {
                 testFile.addSmell(null);
                 continue;
@@ -103,4 +138,5 @@ public class TestSmellDetector {
         }
         return testFile;
     }
+
 }

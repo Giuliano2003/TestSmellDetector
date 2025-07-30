@@ -14,9 +14,16 @@ public class TestMethod extends SmellyElement {
         data = new HashMap<>();
     }
 
+    public TestMethod(String methodName, boolean hasSmell) {
+        this.methodName = methodName;
+        this.hasSmell = hasSmell;
+    }
+
     public void setSmell(boolean hasSmell) {
         this.hasSmell = hasSmell;
     }
+
+
 
     public void addDataItem(String name, String value) {
         data.put(name, value);
