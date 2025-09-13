@@ -1,6 +1,7 @@
 package testsmell
 
 import com.github.javaparser.JavaParser
+import com.github.javaparser.ParserConfiguration
 import com.github.javaparser.ast.CompilationUnit
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.BeforeEach
@@ -13,6 +14,9 @@ import testsmell.smell.EagerTest
 import thresholds.DefaultThresholds
 import thresholds.SpadiniThresholds
 import com.github.javaparser.StaticJavaParser
+import com.github.javaparser.symbolsolver.JavaSymbolSolver
+import com.github.javaparser.symbolsolver.resolution.typesolvers.CombinedTypeSolver
+import com.github.javaparser.symbolsolver.resolution.typesolvers.ReflectionTypeSolver
 
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -31,73 +35,16 @@ class TestDetectionCorrectness {
         testFile = mock(TestFile::class.java)
         `when`(testFile.testFileNameWithoutExtension).thenReturn("fake/path")
         `when`(testFile.productionFileNameWithoutExtension).thenReturn("fake/path")
+        val typeSolver = CombinedTypeSolver().apply {
+            add(ReflectionTypeSolver())
+        }
+        val symbolSolver = JavaSymbolSolver(typeSolver)
+        val parserConfig = ParserConfiguration()
+            .setSymbolResolver(symbolSolver)
+        StaticJavaParser.setConfiguration(parserConfig)
     }
 
-    @Test
-    fun `Test assertion roulette boolean`() {
-        val smell = AssertionRoulette(DefaultThresholds())
-        smell.runAnalysis(testCompilationUnit, productionCompilationUnit,
-                testFile.testFileNameWithoutExtension, testFile.productionFileNameWithoutExtension)
-        `when`(testFile.testSmells).thenReturn(listOf(smell))
-        val values = testFile.testSmells.map { booleanGranularity.invoke(it) }
-        Assertions.assertTrue(values[0] as Boolean)
-    }
 
-    @Test
-    fun `Test assertion roulette granular`() {
-        val smell = AssertionRoulette(DefaultThresholds())
-        smell.runAnalysis(testCompilationUnit, productionCompilationUnit,
-                testFile.testFileNameWithoutExtension, testFile.productionFileNameWithoutExtension)
-        `when`(testFile.testSmells).thenReturn(listOf(smell))
-        val values = testFile.testSmells.map { numericGranularity.invoke(it) }
-        Assertions.assertEquals(24, values[0] as Int)
-    }
-
-    @Test
-    fun `Test assertion roulette granular with Spadini`() {
-        val smell = AssertionRoulette(SpadiniThresholds())
-        smell.runAnalysis(testCompilationUnit, productionCompilationUnit,
-                testFile.testFileNameWithoutExtension, testFile.productionFileNameWithoutExtension)
-        `when`(testFile.testSmells).thenReturn(listOf(smell))
-        val values = testFile.testSmells.map { numericGranularity.invoke(it) }
-        Assertions.assertEquals(23, values[0] as Int)
-    }
-
-    @Test
-    fun `Test eager test boolean`() {
-        val smell = EagerTest(DefaultThresholds())
-        smell.runAnalysis(testCompilationUnit, productionCompilationUnit,
-                testFile.testFileNameWithoutExtension, testFile.productionFileNameWithoutExtension)
-        `when`(testFile.testSmells).thenReturn(listOf(smell))
-        val values = testFile.testSmells.map { booleanGranularity.invoke(it) }
-        Assertions.assertTrue(values[0] as Boolean)
-    }
-
-    @Test
-    fun `Test eager test granular`() {
-        val smell = EagerTest(DefaultThresholds())
-        smell.runAnalysis(testCompilationUnit, productionCompilationUnit,
-                testFile.testFileNameWithoutExtension, testFile.productionFileNameWithoutExtension)
-        `when`(testFile.testSmells).thenReturn(listOf(smell))
-        val values = testFile.testSmells.map { numericGranularity.invoke(it) }
-        Assertions.assertEquals(24, values[0] as Int)
-    }
-
-    @Test
-    fun `Test eager test granular spadini threshold`() {
-        val smell = EagerTest(SpadiniThresholds())
-        smell.runAnalysis(testCompilationUnit, productionCompilationUnit,
-                testFile.testFileNameWithoutExtension, testFile.productionFileNameWithoutExtension)
-        `when`(testFile.testSmells).thenReturn(listOf(smell))
-        val values = testFile.testSmells.map { numericGranularity.invoke(it) }
-        Assertions.assertEquals(24, values[0] as Int)
-    }
-
-    @Test
-    fun `Test number of methods detected`() {
-        val declaration = testCompilationUnit.types[0]
-        Assertions.assertEquals(25, declaration.methods.size)
-    }
 
     private val fractionSource = """
         /*

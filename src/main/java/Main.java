@@ -3,7 +3,6 @@ import testsmell.ResultsWriter;
 import testsmell.TestFile;
 import testsmell.TestSmellDetector;
 import thresholds.DefaultThresholds;
-import thresholds.Thresholds;
 
 import java.io.BufferedReader;
 import java.io.File;

@@ -2,19 +2,14 @@ package testsmell.smell;
 
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.body.MethodDeclaration;
-import com.github.javaparser.ast.expr.Expression;
-import com.github.javaparser.ast.expr.MethodCallExpr;
-import com.github.javaparser.ast.expr.ObjectCreationExpr;
+import com.github.javaparser.ast.expr.*;
 import com.github.javaparser.ast.visitor.VoidVisitorAdapter;
 import testsmell.AbstractSmell;
 import testsmell.TestMethod;
 import testsmell.Util;
 import thresholds.Thresholds;
-import com.github.javaparser.ast.expr.BinaryExpr;
-import com.github.javaparser.ast.expr.LiteralExpr;
 
 import java.io.FileNotFoundException;
-import java.util.Arrays;
 
 public class MagicNumberTest extends AbstractSmell {
 
@@ -58,9 +53,6 @@ public class MagicNumberTest extends AbstractSmell {
                 testMethod.setSmell(magicCount >= thresholds.getMagicNumberTest());
                 testMethod.addDataItem("MagicNumberCount", String.valueOf(magicCount));
                 smellyElementsSet.add(testMethod);
-                System.out.println("Test analizzato:");
-                System.out.println(n.getNameAsString());
-                System.out.println(testMethod.isSmelly());
                 //reset values for next method
                 currentMethod = null;
                 magicCount = 0;
@@ -89,27 +81,55 @@ public class MagicNumberTest extends AbstractSmell {
                     name.equals("assertFalse");
         }
 
+
         private void countMagicNumbers(Expression expr) {
-            if (expr instanceof LiteralExpr) {
-                if (Util.isNumber(expr.toString())) {
-                    magicCount++;
-                }
+            if (expr == null) return;
+            expr = unwrap(expr);
+            if (isNumericLiteral(expr)) {
+                magicCount++;
+                return;
             }
-            else if (expr instanceof BinaryExpr) {
-                BinaryExpr bin = (BinaryExpr) expr;
-                countMagicNumbers(bin.getLeft());
-                countMagicNumbers(bin.getRight());
+            if (expr.isUnaryExpr()) {
+                countMagicNumbers(expr.asUnaryExpr().getExpression()); // es: -0
+            } else if (expr.isBinaryExpr()) {
+                countMagicNumbers(expr.asBinaryExpr().getLeft());
+                countMagicNumbers(expr.asBinaryExpr().getRight());
+            } else if (expr.isMethodCallExpr()) {
+                MethodCallExpr m = expr.asMethodCallExpr();
+                m.getScope().ifPresent(this::countMagicNumbers);
+                for (Expression arg : m.getArguments()) countMagicNumbers(arg);
+            } else if (expr.isObjectCreationExpr()) {
+                for (Expression arg : expr.asObjectCreationExpr().getArguments()) countMagicNumbers(arg);
+            } else if (expr.isConditionalExpr()) { // es: cond ? 0 : foo()
+                ConditionalExpr c = expr.asConditionalExpr();
+                countMagicNumbers(c.getCondition());
+                countMagicNumbers(c.getThenExpr());
+                countMagicNumbers(c.getElseExpr());
+            } else if (expr.isArrayInitializerExpr()) {
+                expr.asArrayInitializerExpr().getValues().forEach(this::countMagicNumbers);
             }
-            else if (expr instanceof MethodCallExpr) { // del tipo assertEquals(someMethod(5))
-                for (Expression arg : ((MethodCallExpr) expr).getArguments()) {
-                    countMagicNumbers(arg);
-                }
-            }
-            else if (expr instanceof ObjectCreationExpr) { // del tipo assertEquals(new Integer(5))
-                for (Expression arg : ((ObjectCreationExpr) expr).getArguments()) {
-                    countMagicNumbers(arg);
+        }
+
+        private Expression unwrap(Expression e) {
+            while (true) {
+                if (e.isEnclosedExpr()) {
+                    e = e.asEnclosedExpr().getInner();
+                } else if (e.isCastExpr()) {
+                    e = e.asCastExpr().getExpression();
+                } else {
+                    return e;
                 }
             }
         }
+
+        private boolean isNumericLiteral(Expression e) {
+            // JavaParser separa: IntegerLiteralExpr, LongLiteralExpr, DoubleLiteralExpr
+            // (i float di solito arrivano come DoubleLiteralExpr con suffisso f/F)
+            if (e.isIntegerLiteralExpr()) return true;   // es: 0, 0x0, 0b0, 00
+            if (e.isLongLiteralExpr())    return true;   // es: 0L
+            if (e.isDoubleLiteralExpr())  return true;   // es: 0.0, .0, 0f, 0d
+            return false;
+        }
+
     }
 }

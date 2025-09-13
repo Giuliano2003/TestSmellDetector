@@ -9,7 +9,6 @@ import testsmell.AbstractSmell;
 import testsmell.SmellyElement;
 import testsmell.TestClass;
 import thresholds.Thresholds;
-
 import java.io.FileNotFoundException;
 import java.util.List;
 

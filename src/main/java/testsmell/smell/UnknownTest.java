@@ -1,7 +1,5 @@
 package testsmell.smell;
-
 import com.github.javaparser.ast.CompilationUnit;
-import com.github.javaparser.ast.NodeList;
 import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.expr.AnnotationExpr;
 import com.github.javaparser.ast.expr.MemberValuePair;
@@ -9,11 +7,9 @@ import com.github.javaparser.ast.expr.MethodCallExpr;
 import com.github.javaparser.ast.expr.NormalAnnotationExpr;
 import com.github.javaparser.ast.visitor.VoidVisitorAdapter;
 import testsmell.AbstractSmell;
-import testsmell.SmellyElement;
 import testsmell.TestMethod;
 import testsmell.Util;
 import thresholds.Thresholds;
-
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.List;
@@ -59,7 +55,6 @@ public class UnknownTest extends AbstractSmell {
                     AnnotationExpr annotation = assertAnnotation.get();
                     if (annotation.isNormalAnnotationExpr()) {
                         NormalAnnotationExpr normal = annotation.asNormalAnnotationExpr();
-
                         for (MemberValuePair pair : normal.getPairs()) {
                             if (pair.getNameAsString().equals("expected")
                                     && pair.getValue().toString().contains("Exception")) {

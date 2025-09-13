@@ -6,12 +6,15 @@ import com.github.javaparser.ParserConfiguration;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.body.TypeDeclaration;
 import com.github.javaparser.symbolsolver.JavaSymbolSolver;
+import com.github.javaparser.symbolsolver.resolution.typesolvers.ClassLoaderTypeSolver;
 import com.github.javaparser.symbolsolver.resolution.typesolvers.CombinedTypeSolver;
+import com.github.javaparser.symbolsolver.resolution.typesolvers.JavaParserTypeSolver;
 import com.github.javaparser.symbolsolver.resolution.typesolvers.ReflectionTypeSolver;
 import org.apache.commons.lang3.StringUtils;
 import testsmell.smell.*;
 import thresholds.Thresholds;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -56,8 +59,10 @@ public class TestSmellDetector {
         testSmells.add(new UnknownTest(thresholds));
         testSmells.add(new IgnoredTest(thresholds));
         testSmells.add(new ResourceOptimism(thresholds));
+        testSmells.add(new MagicStringTest(thresholds));
         testSmells.add(new MagicNumberTest(thresholds));
         testSmells.add(new DependentTest(thresholds));
+        testSmells.add(new NewEagerTest(thresholds));
     }
 
     public void setTestSmells(List<AbstractSmell> testSmells) {
@@ -80,21 +85,34 @@ public class TestSmellDetector {
     public TestFile detectSmells(TestFile testFile) throws IOException {
         initializeSmells();
 
-        // 1) Prepara il CombinedTypeSolver / JavaSymbolSolver
+        // 1) TypeSolver
         CombinedTypeSolver typeSolver = new CombinedTypeSolver();
-        typeSolver.add(new ReflectionTypeSolver());
-        // se ti serve risolvere classi dal tuo codice di produzione:
-        // typeSolver.add(new JavaParserTypeSolver(new File("src/main/java")));
+        typeSolver.add(new ReflectionTypeSolver(false)); // JRE
+
+        if (!StringUtils.isEmpty(testFile.getTestFilePath())) {
+            File testDir = new File(testFile.getTestFilePath()).getParentFile();
+            if (testDir != null && testDir.isDirectory()) {
+                typeSolver.add(new JavaParserTypeSolver(testDir));
+            }
+        }
+
+        if (!StringUtils.isEmpty(testFile.getProductionFilePath())) {
+            File prodDir = new File(testFile.getProductionFilePath()).getParentFile();
+            if (prodDir != null && prodDir.isDirectory()) {
+                typeSolver.add(new JavaParserTypeSolver(prodDir));
+            }
+        }
+
+        // C) dipendenze (JUnit/Hamcrest ecc.) dal classloader del processo
+        typeSolver.add(new ClassLoaderTypeSolver(Thread.currentThread().getContextClassLoader()));
 
         JavaSymbolSolver symbolSolver = new JavaSymbolSolver(typeSolver);
 
-        // 2) Crea una ParserConfiguration con il SymbolResolver
-        ParserConfiguration parserConfig = new ParserConfiguration()
-                .setSymbolResolver(symbolSolver);
-
-        // 3) Inizializza JavaParser con quella configurazione
+        // 2) Parser con resolver
+        ParserConfiguration parserConfig = new ParserConfiguration().setSymbolResolver(symbolSolver);
         JavaParser parser = new JavaParser(parserConfig);
 
+        // 3) Parse dei due file (come già fai)
         CompilationUnit testFileCU = null;
         CompilationUnit prodFileCU = null;
 
@@ -122,14 +140,14 @@ public class TestSmellDetector {
             }
         }
 
+        // 4) Esegui gli smells (come già fai)
         for (AbstractSmell smell : testSmells) {
+            System.out.println("IL NOME DELLA CLASSE DI TEST:");
+            System.out.println(testFile.getTestFilePath());
             try {
-                smell.runAnalysis(
-                        testFileCU,
-                        prodFileCU,
+                smell.runAnalysis(testFileCU, prodFileCU,
                         testFile.getTestFileNameWithoutExtension(),
-                        testFile.getProductionFileNameWithoutExtension()
-                );
+                        testFile.getProductionFileNameWithoutExtension());
             } catch (FileNotFoundException e) {
                 testFile.addSmell(null);
                 continue;
@@ -138,5 +156,6 @@ public class TestSmellDetector {
         }
         return testFile;
     }
+
 
 }

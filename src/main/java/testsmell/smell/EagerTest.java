@@ -122,7 +122,7 @@ public class EagerTest extends AbstractSmell {
                 }
             } else { //collect a list of all public/protected members of the production class
                 for (Modifier modifier : n.getModifiers()) {
-                    if (modifier.getKeyword().asString().equalsIgnoreCase("public") || modifier.getKeyword().asString().equalsIgnoreCase("protected")) {
+                    if (n.isPublic() || n.isProtected()) {
                         productionMethods.add(n);
                     }
                 }
@@ -194,21 +194,6 @@ public class EagerTest extends AbstractSmell {
             }
         }
 
-//        /**
-//         * The purpose of this method is to capture the names of all variables, declared in the method body, that are of type of the production class.
-//         * The variable is captured as and when the code statement is parsed/evaluated by the parser
-//         */
-//        @Override
-//        public void visit(VariableDeclarationExpr n, Void arg) {
-//            if (currentMethod != null) {
-//                for (int i = 0; i < n.getVariables().size(); i++) {
-//                    if (productionClassName.equals(n.getVariable(i).getType().asString())) {
-//                        productionVariables.add(n.getVariable(i).getNameAsString());
-//                    }
-//                }
-//            }
-//            super.visit(n, arg);
-//        }
 
         @Override
         public void visit(VariableDeclarator n, Void arg) {

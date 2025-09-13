@@ -2,8 +2,14 @@ package testsmell.smell;
 
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.body.MethodDeclaration;
+import com.github.javaparser.ast.expr.Expression;
 import com.github.javaparser.ast.expr.MethodCallExpr;
+import com.github.javaparser.ast.expr.StringLiteralExpr;
 import com.github.javaparser.ast.visitor.VoidVisitorAdapter;
+import com.github.javaparser.resolution.UnsolvedSymbolException;
+import com.github.javaparser.resolution.types.ResolvedType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import testsmell.AbstractSmell;
 import testsmell.SmellyElement;
 import testsmell.TestMethod;
@@ -20,6 +26,7 @@ import java.util.List;
  */
 public class AssertionRoulette extends AbstractSmell {
 
+    private static final Logger log = LoggerFactory.getLogger(AssertionRoulette.class);
     private int assertionsCount = 0;
 
     public AssertionRoulette(Thresholds thresholds) {
@@ -72,7 +79,7 @@ public class AssertionRoulette extends AbstractSmell {
                 // if there is only 1 assert statement in the method, then a explanation message is not needed
                 if (assertCount == 1)
                     testMethod.setSmell(false);
-                //if there is more than one assert statement, then all the asserts need to have an explanation message
+                    //if there is more than one assert statement, then all the asserts need to have an explanation message
                 else if (isSmelly) {
                     testMethod.setSmell(true);
                 }
@@ -93,35 +100,48 @@ public class AssertionRoulette extends AbstractSmell {
         public void visit(MethodCallExpr n, Void arg) {
             super.visit(n, arg);
             if (currentMethod != null) {
-                // if the name of a method being called is an assertion and has 3 parameters
-                if (n.getNameAsString().startsWith(("assertArrayEquals")) ||
-                        n.getNameAsString().startsWith(("assertEquals")) ||
-                        n.getNameAsString().startsWith(("assertNotSame")) ||
+                if (n.getNameAsString().startsWith("assertEquals")
+                        || n.getNameAsString().startsWith("assertArrayEquals")
+                        || n.getNameAsString().startsWith("assertNotEquals")) {
+                    assertCount++;
+                    int argCount = n.getArguments().size();
+                    boolean hasMessage = false;
+                    if (argCount > 2) {
+                        Expression firstArg = n.getArgument(0);
+                        try {
+                            ResolvedType rt = firstArg.calculateResolvedType();
+                            if (rt.isReferenceType()
+                                    && rt.asReferenceType().getQualifiedName().equals("java.lang.String")) {
+                                hasMessage = true;
+                            }
+                        } catch (UnsolvedSymbolException | UnsupportedOperationException e) {
+                            log.error("Non riesco a leggere il simbolo");
+                        }
+                    }
+                    if (!(argCount == 4 || (argCount == 3 && hasMessage))) {
+                        assertNoMessageCount++;
+                    }
+                }
+                else if (n.getNameAsString().startsWith(("assertNotSame")) ||
                         n.getNameAsString().startsWith(("assertSame")) ||
                         n.getNameAsString().startsWith("assertThrows") ||
                         n.getNameAsString().startsWith(("assertThat"))) {
                     assertCount++;
-                    // assert methods that do not contain a message
                     if (n.getArguments().size() < 3) {
                         assertNoMessageCount++;
                     }
                 }
-                // if the name of a method being called is an assertion and has 2 parameters
                 else if (n.getNameAsString().equals("assertFalse") ||
                         n.getNameAsString().equals("assertNotNull") ||
                         n.getNameAsString().equals("assertNull") ||
                         n.getNameAsString().equals("assertTrue")) {
                     assertCount++;
-                    // assert methods that do not contain a message
                     if (n.getArguments().size() < 2) {
                         assertNoMessageCount++;
                     }
                 }
-
-                // if the name of a method being called is 'fail'
                 else if (n.getNameAsString().equals("fail")) {
                     assertCount++;
-                    // fail method does not contain a message
                     if (n.getArguments().size() < 1) {
                         assertNoMessageCount++;
                     }

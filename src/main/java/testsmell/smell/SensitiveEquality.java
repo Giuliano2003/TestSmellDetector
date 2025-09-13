@@ -2,8 +2,8 @@ package testsmell.smell;
 
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.body.MethodDeclaration;
-import com.github.javaparser.ast.expr.Expression;
-import com.github.javaparser.ast.expr.MethodCallExpr;
+import com.github.javaparser.ast.body.VariableDeclarator;
+import com.github.javaparser.ast.expr.*;
 import com.github.javaparser.ast.visitor.VoidVisitorAdapter;
 import testsmell.AbstractSmell;
 import testsmell.TestMethod;
@@ -11,6 +11,8 @@ import testsmell.Util;
 import thresholds.Thresholds;
 
 import java.io.FileNotFoundException;
+import java.util.HashSet;
+import java.util.Set;
 
 public class SensitiveEquality extends AbstractSmell {
 
@@ -18,76 +20,134 @@ public class SensitiveEquality extends AbstractSmell {
         super(thresholds);
     }
 
-    /**
-     * Checks of 'Sensitive Equality' smell
-     */
     @Override
     public String getSmellName() {
         return "Sensitive Equality";
     }
 
-    /**
-     * Analyze the test file for test methods the 'Sensitive Equality' smell
-     */
     @Override
-    public void runAnalysis(CompilationUnit testFileCompilationUnit, CompilationUnit productionFileCompilationUnit, String testFileName, String productionFileName) throws FileNotFoundException {
-        SensitiveEquality.ClassVisitor classVisitor;
-        classVisitor = new SensitiveEquality.ClassVisitor();
+    public void runAnalysis(CompilationUnit testFileCompilationUnit,
+                            CompilationUnit productionFileCompilationUnit,
+                            String testFileName,
+                            String productionFileName) throws FileNotFoundException {
+        ClassVisitor classVisitor = new ClassVisitor();
         classVisitor.visit(testFileCompilationUnit, null);
     }
 
     private class ClassVisitor extends VoidVisitorAdapter<Void> {
         private MethodDeclaration currentMethod = null;
         private int sensitiveCount = 0;
-        TestMethod testMethod;
+        private TestMethod testMethod;
+        private Set<String> sensitiveVars = new HashSet<>();
+        private final Set<String> methodTargets = Set.of("toString");
 
-        // examine all methods in the test class
         @Override
         public void visit(MethodDeclaration n, Void arg) {
             if (Util.isValidTestMethod(n)) {
                 currentMethod = n;
+                sensitiveVars.clear();
+                sensitiveCount = 0;
                 testMethod = new TestMethod(n.getNameAsString());
-                testMethod.setSmell(false); //default value is false (i.e. no smell)
+                testMethod.setSmell(false);
+
                 super.visit(n, arg);
 
                 boolean isSmelly = sensitiveCount > thresholds.getSensitiveEquality();
+                if(isSmelly){
+                    System.out.println(sensitiveCount + " sensitive equality found"+testMethod.getElementName());
+                }
                 testMethod.setSmell(isSmelly);
                 testMethod.addDataItem("SensitiveCount", String.valueOf(sensitiveCount));
-
                 smellyElementsSet.add(testMethod);
 
-                //reset values for next method
                 currentMethod = null;
-                sensitiveCount = 0;
             }
         }
 
-        // examine the methods being called within the test method
+        @Override
+        public void visit(VariableDeclarator n, Void arg) {
+            super.visit(n, arg);
+            n.getInitializer().ifPresent(value -> {
+                boolean isSensitive = value.findAll(MethodCallExpr.class).stream()
+                        .map(MethodCallExpr::getNameAsString)
+                        .anyMatch(methodTargets::contains);
+                if (isSensitive) {
+                    sensitiveVars.add(n.getNameAsString());
+                }
+            });
+        }
+
+
+        @Override
+        public void visit(AssignExpr n, Void arg) {
+            super.visit(n, arg);
+            if (currentMethod == null) return;
+            Expression target = n.getTarget();
+            Expression value = n.getValue();
+            String varName = null;
+            if (target.isNameExpr()) {
+                varName = target.asNameExpr().getNameAsString();
+            } else if (target.isFieldAccessExpr()) {
+                varName = target.asFieldAccessExpr().getNameAsString();
+            }
+            if (varName != null) {
+                boolean isSensitive = value.findAll(MethodCallExpr.class).stream()
+                        .map(MethodCallExpr::getNameAsString)
+                        .anyMatch(methodTargets::contains);
+                if (isSensitive) {
+                    System.out.println("variabile sensibile + "+varName);
+                    sensitiveVars.add(varName);
+                }
+            }
+        }
+
+        private boolean isEqualityAssert(String name) {
+            return name.equals("assertEquals")
+                    || name.equals("assertNotEquals")
+                    || name.equals("assertArrayEquals")
+                    || name.equals("assertSame")
+                    || name.equals("assertNotSame")
+                    || name.equals("assertTrue")
+                    || name.equals("assertFalse")
+                    || name.equals("assertThat")
+                    || name.equals("fail");
+        }
+
+
+        private boolean isSensitiveExpr(Expression expr) {
+            if (expr == null) return false;
+
+            boolean direct = expr.findAll(MethodCallExpr.class).stream()
+                    .anyMatch(mc -> methodTargets.contains(mc.getNameAsString()));
+
+            boolean viaVar = expr.findAll(NameExpr.class).stream()
+                    .map(NameExpr::getNameAsString)
+                    .anyMatch(sensitiveVars::contains);
+
+            boolean viaFieldName = expr.findAll(FieldAccessExpr.class).stream()
+                    .map(fa -> fa.getNameAsString())
+                    .anyMatch(sensitiveVars::contains);
+
+            return direct || viaVar || viaFieldName;
+        }
+
+
+
         @Override
         public void visit(MethodCallExpr n, Void arg) {
             super.visit(n, arg);
             if (currentMethod != null) {
-                // if the name of a method being called start with 'assert'
-                if (n.getNameAsString().startsWith(("assert"))) {
-                    // assert methods that contain toString
+                String name = n.getNameAsString();
+                if (isEqualityAssert(name)) {
                     for (Expression argument : n.getArguments()) {
-                        if (argument.toString().contains("toString")) {
+                        if (isSensitiveExpr(argument)) {
                             sensitiveCount++;
                         }
                     }
                 }
-                // if the name of a method being called is 'fail'
-                else if (n.getNameAsString().equals("fail")) {
-                    // fail methods that contain toString
-                    for (Expression argument : n.getArguments()) {
-                        if (argument.toString().contains("toString")) {
-                            sensitiveCount++;
-                        }
-                    }
-                }
-
             }
         }
+
 
     }
 }

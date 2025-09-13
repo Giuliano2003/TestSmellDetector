@@ -7,6 +7,7 @@ abstract class Thresholds {
     abstract val verboseTest: Int
     abstract val conditionalTestLogic: Int
     abstract val magicNumberTest: Int
+    abstract val magicStringTest: Int
     abstract val generalFixture: Int
     abstract val mysteryGuest: Int
     abstract val resourceOptimism: Int
@@ -31,6 +32,8 @@ open class DefaultThresholds : Thresholds() {
     override val conditionalTestLogic: Int
         get() = 0
     override val magicNumberTest: Int
+        get() = 1
+    override val magicStringTest: Int
         get() = 1
     override val generalFixture: Int
         get() = 0

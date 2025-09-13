@@ -43,6 +43,7 @@ public class Util {
     }
 
     public static boolean isNumber(String str) {
+
         try {
             Double.parseDouble(str);
             return true;

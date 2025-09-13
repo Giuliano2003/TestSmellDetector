@@ -1,5 +1,4 @@
 package testsmell.smell;
-
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.visitor.VoidVisitorAdapter;
@@ -7,7 +6,6 @@ import testsmell.AbstractSmell;
 import testsmell.TestMethod;
 import testsmell.Util;
 import thresholds.Thresholds;
-
 import java.io.FileNotFoundException;
 
 /**
