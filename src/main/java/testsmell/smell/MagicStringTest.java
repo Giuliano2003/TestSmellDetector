@@ -54,6 +54,10 @@ public class MagicStringTest extends AbstractSmell {
                 testMethod.setSmell(magicStringCount >= thresholds.getMagicStringTest());
                 testMethod.addDataItem("MagicStringCount", String.valueOf(magicStringCount));
                 smellyElementsSet.add(testMethod);
+                if (testMethod.isSmelly()) {
+                    putSmellyElement(n.getNameAsString());
+                    addScore(1);
+                }
 
                 // reset for next method
                 currentMethod = null;

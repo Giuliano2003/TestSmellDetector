@@ -50,6 +50,8 @@ public class IgnoredTest extends AbstractSmell {
                     && n.getAnnotationByName("Ignore").isPresent()) {
                 TestMethod tm = new TestMethod(n.getNameAsString());
                 tm.setSmell(true);
+                putSmellyElement(n.getName().toString());
+                addScore(1);
                 smellyElementsSet.add(tm);
                 return;
             }

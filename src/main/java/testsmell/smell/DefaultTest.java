@@ -49,6 +49,8 @@ public class DefaultTest extends AbstractSmell {
             if (n.getNameAsString().equals("ExampleUnitTest") || n.getNameAsString().equals("ExampleInstrumentedTest")) {
                 testClass = new TestClass(n.getNameAsString());
                 testClass.setHasSmell(true);
+                putSmellyElement(n.getName().toString());
+                addScore(1);
                 smellyElementsSet.add(testClass);
             }
             super.visit(n, arg);

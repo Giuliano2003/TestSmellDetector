@@ -250,11 +250,15 @@ public class NewEagerTest extends AbstractSmell {
 
 
                 int distinct = (int) bindings.stream().map(b -> b.callId).distinct().count();
-                System.out.println(orderCounter + " distinct " + distinct);
+                // System.out.println(orderCounter + " distinct " + distinct);
                 boolean isSmelly = distinct > 1;
                 testMethod.setSmell(isSmelly);
                 smellyElementsSet.add(testMethod);
-                if (isSmelly) overallSmelly++;
+                if (isSmelly){
+                    overallSmelly++;
+                    putSmellyElement(n.getNameAsString());
+                    addScore(1);
+                }
 
                 currentMethod = null;
             } else {

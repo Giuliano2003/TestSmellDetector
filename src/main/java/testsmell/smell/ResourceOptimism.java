@@ -59,6 +59,10 @@ public class ResourceOptimism extends AbstractSmell {
                 super.visit(n, arg);
 
                 testMethod.setSmell(methodVariables.size() > thresholds.getResourceOptimism() || hasSmell == true);
+                if(testMethod.isSmelly()) {
+                    putSmellyElement(n.getName().toString());
+                    addScore(methodVariables.size());
+                }
                 testMethod.addDataItem("ResourceOptimismCount", String.valueOf(resourceOptimismCount));
 
                 smellyElementsSet.add(testMethod);
@@ -143,5 +147,4 @@ public class ResourceOptimism extends AbstractSmell {
         }
     }
 }
-
 

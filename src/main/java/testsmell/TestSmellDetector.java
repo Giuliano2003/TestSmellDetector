@@ -13,6 +13,8 @@ import com.github.javaparser.symbolsolver.resolution.typesolvers.ReflectionTypeS
 import org.apache.commons.lang3.StringUtils;
 import testsmell.smell.*;
 import thresholds.Thresholds;
+import report.JsonReporter;
+
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -85,7 +87,6 @@ public class TestSmellDetector {
     public TestFile detectSmells(TestFile testFile) throws IOException {
         initializeSmells();
 
-        // 1) TypeSolver
         CombinedTypeSolver typeSolver = new CombinedTypeSolver();
         typeSolver.add(new ReflectionTypeSolver(false)); // JRE
 
@@ -103,16 +104,13 @@ public class TestSmellDetector {
             }
         }
 
-        // C) dipendenze (JUnit/Hamcrest ecc.) dal classloader del processo
         typeSolver.add(new ClassLoaderTypeSolver(Thread.currentThread().getContextClassLoader()));
 
         JavaSymbolSolver symbolSolver = new JavaSymbolSolver(typeSolver);
 
-        // 2) Parser con resolver
         ParserConfiguration parserConfig = new ParserConfiguration().setSymbolResolver(symbolSolver);
         JavaParser parser = new JavaParser(parserConfig);
 
-        // 3) Parse dei due file (come già fai)
         CompilationUnit testFileCU = null;
         CompilationUnit prodFileCU = null;
 
@@ -140,10 +138,7 @@ public class TestSmellDetector {
             }
         }
 
-        // 4) Esegui gli smells (come già fai)
         for (AbstractSmell smell : testSmells) {
-            System.out.println("IL NOME DELLA CLASSE DI TEST:");
-            System.out.println(testFile.getTestFilePath());
             try {
                 smell.runAnalysis(testFileCU, prodFileCU,
                         testFile.getTestFileNameWithoutExtension(),
@@ -154,6 +149,24 @@ public class TestSmellDetector {
             }
             testFile.addSmell(smell);
         }
+        java.util.Map<String, java.util.Set<String>> jsonMap = new java.util.LinkedHashMap<>();
+
+        for (AbstractSmell smell : testSmells) {
+            if (smell == null) continue;
+            java.util.Map<String, java.util.Set<String>> partial = smell.getResult();
+            if (partial == null) continue;
+
+            for (java.util.Map.Entry<String, java.util.Set<String>> e : partial.entrySet()) {
+                String smellName = e.getKey();
+                java.util.Set<String> methods = e.getValue();
+                if (methods == null) continue;
+
+                jsonMap.computeIfAbsent(smellName, k -> new java.util.LinkedHashSet<>())
+                        .addAll(methods);
+            }
+        }
+        System.out.println(report.JsonReporter.toJson(jsonMap));
+
         return testFile;
     }
 

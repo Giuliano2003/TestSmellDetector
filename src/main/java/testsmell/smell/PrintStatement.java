@@ -57,6 +57,10 @@ public class PrintStatement extends AbstractSmell {
 
                 boolean isSmelly = printCount > thresholds.getPrintStatement();
                 testMethod.setSmell(isSmelly);
+                if(isSmelly) {
+                    putSmellyElement(n.getName().toString());
+                    addScore(printCount);
+                }
                 testMethod.addDataItem("PrintCount", String.valueOf(printCount));
 
                 smellyElementsSet.add(testMethod);

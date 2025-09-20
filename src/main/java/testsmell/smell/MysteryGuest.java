@@ -102,6 +102,10 @@ public class MysteryGuest extends AbstractSmell {
                 super.visit(n, arg);
 
                 boolean isSmelly = mysteryCount > thresholds.getMysteryGuest();
+                if(isSmelly){
+                    putSmellyElement(n.getName().toString());
+                    addScore(mysteryCount);
+                }
                 testMethod.setSmell(isSmelly);
                 testMethod.addDataItem("MysteryCount", String.valueOf(mysteryCount));
 

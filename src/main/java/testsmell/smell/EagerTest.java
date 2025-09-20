@@ -109,6 +109,10 @@ public class EagerTest extends AbstractSmell {
                     super.visit(n, arg);
 
                     boolean isSmelly = eagerCount > thresholds.getEagerTest();
+                    if(isSmelly){
+                        putSmellyElement(n.getName().toString());
+                        addScore(eagerCount);
+                    }
                     //the method has a smell if there is more than 1 call to production methods
                     testMethod.setSmell(isSmelly);
                     smellyElementsSet.add(testMethod);
@@ -120,7 +124,7 @@ public class EagerTest extends AbstractSmell {
                     productionVariables = new ArrayList<>();
                     calledMethods = new ArrayList<>();
                 }
-            } else { //collect a list of all public/protected members of the production class
+            }else { //collect a list of all public/protected members of the production class
                 for (Modifier modifier : n.getModifiers()) {
                     if (n.isPublic() || n.isProtected()) {
                         productionMethods.add(n);

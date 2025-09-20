@@ -1,7 +1,9 @@
-import testsmell.AbstractSmell;
-import testsmell.ResultsWriter;
-import testsmell.TestFile;
-import testsmell.TestSmellDetector;
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.stream.JsonWriter;
+import org.json.simple.JSONArray;
+import org.json.simple.JSONObject;
+import testsmell.*;
 import thresholds.DefaultThresholds;
 
 import java.io.BufferedReader;
@@ -10,9 +12,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 
 public class Main {
     public static void main(String[] args) throws IOException {
@@ -53,58 +53,32 @@ public class Main {
             testFiles.add(testFile);
         }
 
-        /*
-          Initialize the output file - Create the output file and add the column names
-         */
-        ResultsWriter resultsWriter = ResultsWriter.createResultsWriter();
-        List<String> columnNames;
-        List<String> columnValues;
-
-        columnNames = testSmellDetector.getTestSmellNames();
-        columnNames.add(0, "App");
-        columnNames.add(1, "TestClass");
-        columnNames.add(2, "TestFilePath");
-        columnNames.add(3, "ProductionFilePath");
-        columnNames.add(4, "RelativeTestFilePath");
-        columnNames.add(5, "RelativeProductionFilePath");
-        columnNames.add(6, "NumberOfMethods");
-
-        resultsWriter.writeColumnName(columnNames);
-
-        /*
-          Iterate through all test files to detect smells and then write the output
-        */
         TestFile tempFile;
         DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
         Date date;
-        for (TestFile file : testFiles) {
-            date = new Date();
-            System.out.println(dateFormat.format(date) + " Processing: " + file.getTestFilePath());
-            System.out.println("Processing: " + file.getTestFilePath());
 
+        JSONObject jsonResult = new JSONObject();
+        for (TestFile file : testFiles) {
+            System.out.println("ciao");
             //detect smells
             tempFile = testSmellDetector.detectSmells(file);
-
             //write output
-            columnValues = new ArrayList<>();
-            columnValues.add(file.getApp());
-            columnValues.add(file.getTestFileName());
-            columnValues.add(file.getTestFilePath());
-            columnValues.add(file.getProductionFilePath());
-            columnValues.add(file.getRelativeTestFilePath());
-            columnValues.add(file.getRelativeProductionFilePath());
-            columnValues.add(String.valueOf(file.getNumberOfTestMethods()));
             for (AbstractSmell smell : tempFile.getTestSmells()) {
-                try {
-                    columnValues.add(String.valueOf(smell.getNumberOfSmellyTests()));
-                } catch (NullPointerException e) {
-                    columnValues.add("");
+                if(smell.hasSmell()){
+                    Map<String, Set<String>> result = smell.getResult();
+                    JSONObject smellEntry = new JSONObject();
+                    JSONArray array = new JSONArray();
+                    Set<String> strings = smell.getResult().get(smell.getSmellName());
+                    for (String smelll: strings) {
+                        array.add(smelll);
+                    }
+                    smellEntry.put("methods",array);
+                    smellEntry.put("score",smell.getScore().get(smell.getSmellName()));
+                    jsonResult.put(smell.getSmellName(),smellEntry);
                 }
             }
-            resultsWriter.writeLine(columnValues);
         }
 
-        System.out.println("end");
     }
 
 

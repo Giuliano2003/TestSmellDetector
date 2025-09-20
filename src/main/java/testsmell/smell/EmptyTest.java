@@ -1,4 +1,5 @@
 package testsmell.smell;
+
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.visitor.VoidVisitorAdapter;
@@ -6,6 +7,7 @@ import testsmell.AbstractSmell;
 import testsmell.TestMethod;
 import testsmell.Util;
 import thresholds.Thresholds;
+
 import java.io.FileNotFoundException;
 
 /**
@@ -55,6 +57,10 @@ public class EmptyTest extends AbstractSmell {
                     if (n.getBody().isPresent()) {
                         //get the total number of statements contained in the method
                         boolean isSmelly = n.getBody().get().getStatements().size() == thresholds.getEmptyTest();
+                        if(isSmelly){
+                            putSmellyElement(n.getName().toString());
+                            addScore(1);
+                        }
                         testMethod.setSmell(isSmelly); //the method has no statements (i.e no body)
                     }
                 }

@@ -1,3 +1,4 @@
+
 package testsmell
 
 import com.github.ajalt.clikt.core.CliktCommand
@@ -18,9 +19,9 @@ import java.io.File
 class DetectorRunner : CliktCommand() {
     private val inputFile: File? by option("-f", "--file", help = "The csv input file").file()
     val thresholds: String by option("-t", "--thresholds", help = "The threshold to use for the detection")
-            .choice("default", "spadini").default("default")
+        .choice("default", "spadini").default("default")
     private val granularity: String by option("-g", "--granularity", help = "Boolean value of numerical for the detection")
-            .choice("boolean", "numerical").default("boolean")
+        .choice("boolean", "numerical").default("boolean")
     private val output: String by option("-o", "--output", help = "").default("test-smells.csv")
 
     override fun run() {
@@ -38,10 +39,10 @@ class DetectorRunner : CliktCommand() {
             val writer = CSVWriter(output)
             for (input in inputData) {
                 val detection = Detection(
-                        project = input.application,
-                        testClassPath = input.testPath,
-                        productionClassPath = input.productionPath,
-                        testSmellDetector = TestSmellDetector(thresholdStrategy)
+                    project = input.application,
+                    testClassPath = input.testPath,
+                    productionClassPath = input.productionPath,
+                    testSmellDetector = TestSmellDetector(thresholdStrategy)
                 )
                 val detectedSmell: DetectionResult = detection.detectSmells(granularityFunction)
                 writer.writeResult(detectedSmell)

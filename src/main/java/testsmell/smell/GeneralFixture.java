@@ -116,8 +116,7 @@ public class GeneralFixture extends AbstractSmell {
         }
     }
 
-    // Utility: estrae il nome della variabile/campo usata come receiver di una call.
-// Gestisce chain (es. bank.getX().getY()), this.bank, cast, parentesi, ecc.
+
     private static String extractReceiverName(Expression scope) {
         Expression e = scope;
         while (e != null) {
@@ -183,6 +182,10 @@ public class GeneralFixture extends AbstractSmell {
                 super.visit(n, arg);
                 TestMethod testMethod = new TestMethod(n.getNameAsString());
                 boolean isSmelly = fixtureCount.size() != setupFields.size();
+                if(isSmelly) {
+                    putSmellyElement(n.getName().toString());
+                    addScore(fixtureCount.size());
+                }
                 testMethod.setSmell(isSmelly);
                 smellyElementsSet.add(testMethod);
                 fixtureCount.clear();

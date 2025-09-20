@@ -1,3 +1,4 @@
+
 package testsmell.smell;
 
 import com.github.javaparser.ast.CompilationUnit;
@@ -59,7 +60,10 @@ public class ExceptionCatchingThrowing extends AbstractSmell {
                     exceptionCount++;
 
                 boolean isSmelly = exceptionCount > thresholds.getExceptionCatchingThrowing();
-
+                if(isSmelly) {
+                    putSmellyElement(n.getName().toString());
+                    addScore(exceptionCount);
+                }
                 testMethod.setSmell(isSmelly);
                 testMethod.addDataItem("ExceptionCount", String.valueOf(exceptionCount));
 

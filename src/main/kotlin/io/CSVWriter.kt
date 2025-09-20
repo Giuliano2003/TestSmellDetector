@@ -14,15 +14,15 @@ class CSVWriter(private val destinationPath: String = "test-smells.csv") {
         if (!flag) {
             csvWriter().open(destinationPath) {
                 val header = listOf("App", "TestClass", "TestFilePath", "ProductionFilePath",
-                        "RelativeTestFilePath", "RelativeProductionFilePath", "NumberOfMethods")
+                    "RelativeTestFilePath", "RelativeProductionFilePath", "NumberOfMethods")
                 val smells = result.smellResult.map { it.first }
                 writeRow(header.plus(smells))
                 flag = true
             }
         }
         val toSave = listOf(result.application,
-                result.testFileName, result.testFilePath, result.productionFilePath,
-                result.relativeTestFilePath, result.relativeProductionFilePath, result.numberOfTestMethods)
+            result.testFileName, result.testFilePath, result.productionFilePath,
+            result.relativeTestFilePath, result.relativeProductionFilePath, result.numberOfTestMethods)
         csvWriter().open(destinationPath, append = true) {
             writeRow(toSave.plus(result.smellResult.map { it.second.toString() }))
         }

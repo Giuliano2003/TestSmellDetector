@@ -53,10 +53,12 @@ public class SensitiveEquality extends AbstractSmell {
                 super.visit(n, arg);
 
                 boolean isSmelly = sensitiveCount > thresholds.getSensitiveEquality();
-                if(isSmelly){
-                    System.out.println(sensitiveCount + " sensitive equality found"+testMethod.getElementName());
-                }
+
                 testMethod.setSmell(isSmelly);
+                if(isSmelly){
+                    putSmellyElement(n.getName().toString());
+                    addScore(sensitiveCount);
+                }
                 testMethod.addDataItem("SensitiveCount", String.valueOf(sensitiveCount));
                 smellyElementsSet.add(testMethod);
 
@@ -95,7 +97,6 @@ public class SensitiveEquality extends AbstractSmell {
                         .map(MethodCallExpr::getNameAsString)
                         .anyMatch(methodTargets::contains);
                 if (isSensitive) {
-                    System.out.println("variabile sensibile + "+varName);
                     sensitiveVars.add(varName);
                 }
             }

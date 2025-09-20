@@ -1,3 +1,4 @@
+
 package detection
 
 import testsmell.AbstractSmell
@@ -25,14 +26,14 @@ class Detection(private val project: String,
         val outputs: List<Pair<String, String>> = smellLists.zip(smellValues.map { e -> e.toString() })
 
         return DetectionResult(
-                application = project,
-                testFileName = tempFile.testFileName,
-                testFilePath = tempFile.testFilePath,
-                productionFilePath = tempFile.productionFilePath,
-                relativeTestFilePath = tempFile.relativeTestFilePath,
-                relativeProductionFilePath = tempFile.relativeProductionFilePath,
-                numberOfTestMethods = testFile.numberOfTestMethods,
-                smellResult = outputs
+            application = project,
+            testFileName = tempFile.testFileName,
+            testFilePath = tempFile.testFilePath,
+            productionFilePath = tempFile.productionFilePath,
+            relativeTestFilePath = tempFile.relativeTestFilePath,
+            relativeProductionFilePath = tempFile.relativeProductionFilePath,
+            numberOfTestMethods = testFile.numberOfTestMethods,
+            smellResult = outputs
         )
     }
 }

@@ -49,8 +49,11 @@ public class MagicNumberTest extends AbstractSmell {
                 testMethod = new TestMethod(n.getNameAsString());
                 testMethod.setSmell(false); //default value is false (i.e. no smell)
                 super.visit(n, arg);
-
                 testMethod.setSmell(magicCount >= thresholds.getMagicNumberTest());
+                if(testMethod.isSmelly()){
+                    putSmellyElement(n.getName().toString());
+                    addScore(magicCount);
+                }
                 testMethod.addDataItem("MagicNumberCount", String.valueOf(magicCount));
                 smellyElementsSet.add(testMethod);
                 //reset values for next method
